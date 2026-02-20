@@ -2,8 +2,11 @@ package com.nsalazar.quicktask.task.infrastructure.database;
 
 import com.nsalazar.quicktask.task.infrastructure.database.entity.TaskEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -135,5 +138,46 @@ import java.util.UUID;
  */
 @Repository
 public interface IJPATaskRepository extends JpaRepository<TaskEntity, UUID> {
+
+    /**
+     * Finds a task by its title when the task is incomplete (completed = false).
+     *
+     * <p><strong>Purpose:</strong>
+     * This method searches for a task with the specified title that has not been completed yet.
+     * It enforces the business rule that prevents duplicate titles for incomplete tasks.
+     *
+     * <p><strong>Query Logic:</strong>
+     * <ul>
+     *   <li>Searches by exact title match (case-sensitive)</li>
+     *   <li>Only returns tasks where completed = false</li>
+     *   <li>Returns at most one task (Optional)</li>
+     * </ul>
+     *
+     * <p><strong>Use Cases:</strong>
+     * <ul>
+     *   <li>Validate that a title is not already used by an incomplete task during creation</li>
+     *   <li>Check for duplicates before creating a new task</li>
+     *   <li>Check for duplicates when updating a task's title</li>
+     * </ul>
+     *
+     * <p><strong>SQL Query Equivalent:</strong>
+     * <pre>
+     * SELECT * FROM tbl_tasks
+     * WHERE title = :title AND completed = false
+     * </pre>
+     *
+     * <p><strong>Performance:</strong>
+     * This query uses the unique constraint index on title for efficient lookups.
+     * The query returns quickly because title is indexed.
+     *
+     * @param title the title to search for. Must not be null or empty.
+     * @return an {@link Optional} containing the TaskEntity if found, or empty Optional if no incomplete task
+     *         exists with the given title
+     *
+     * @see Optional
+     * @see TaskEntity
+     */
+    @Query("SELECT t FROM TaskEntity t WHERE t.title = :title AND t.completed = false")
+    Optional<TaskEntity> findByTitleAndNotCompleted(@Param("title") String title);
 
 }

@@ -298,4 +298,69 @@ public interface ITaskRepository {
      */
     boolean existsById(UUID id);
 
+    /**
+     * Finds a task by its title when the task is incomplete (completed = false).
+     *
+     * <p><strong>Purpose:</strong>
+     * This method searches for a task with the specified title that has not been completed yet.
+     * It enforces the business rule that prevents duplicate titles for incomplete tasks.
+     *
+     * <p><strong>Query Logic:</strong>
+     * <ul>
+     *   <li>Searches by exact title match (case-sensitive)</li>
+     *   <li>Only returns tasks where completed = false</li>
+     *   <li>Returns at most one task (Optional)</li>
+     *   <li>Uses indexed lookup for efficient performance</li>
+     * </ul>
+     *
+     * <p><strong>Business Rule Enforcement:</strong>
+     * This method is used to enforce the constraint that no two incomplete tasks can have the same title.
+     * Before creating or updating a task, the service layer calls this method to validate that the
+     * title is not already in use by another incomplete task.
+     *
+     * <p><strong>Use Cases:</strong>
+     * <ul>
+     *   <li>Validate title uniqueness during task creation</li>
+     *   <li>Check for duplicates when updating a task's title</li>
+     *   <li>Prevent duplicate titles for incomplete tasks only</li>
+     *   <li>Allow multiple complete tasks to have the same title</li>
+     * </ul>
+     *
+     * <p><strong>Example Usage in Service:</strong>
+     * <pre>
+     * // When creating a new task
+     * if (repository.findByTitleAndNotCompleted(title).isPresent()) {
+     *     throw new DuplicateTitleException("A task with this title already exists");
+     * }
+     * Task newTask = new Task(title, description);
+     * repository.save(newTask);
+     *
+     * // When updating a task
+     * Task existing = repository.findById(id).orElseThrow(...);
+     * if (repository.findByTitleAndNotCompleted(newTitle).isPresent()) {
+     *     throw new DuplicateTitleException("Another incomplete task already has this title");
+     * }
+     * existing.setTitle(newTitle);
+     * repository.save(existing);
+     * </pre>
+     *
+     * <p><strong>Important Notes:</strong>
+     * <ul>
+     *   <li>Only searches for incomplete tasks (completed = false)</li>
+     *   <li>Title matching is case-sensitive</li>
+     *   <li>This method queries the database for validation</li>
+     *   <li>The service layer is responsible for handling the result</li>
+     *   <li>Completed tasks with the same title do not cause a conflict</li>
+     * </ul>
+     *
+     * @param title the title to search for. Must not be null or empty.
+     * @return an {@link Optional} containing the {@link Task} if found, or empty Optional if no incomplete task
+     *         exists with the given title
+     * @throws IllegalArgumentException if title is null or empty
+     *
+     * @see Optional
+     * @see Task
+     */
+    Optional<Task> findByTitleAndNotCompleted(String title);
+
 }

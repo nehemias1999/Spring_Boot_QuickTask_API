@@ -418,4 +418,68 @@ public class TaskRepository implements ITaskRepository {
         return jpaTaskRepository.existsById(id);
     }
 
+    /**
+     * Finds a task by its title when the task is incomplete (completed = false).
+     *
+     * <p><strong>Operation Flow:</strong>
+     * <ol>
+     *   <li>Calls {@code jpaTaskRepository.findByTitleAndNotCompleted(title)} to search the database</li>
+     *   <li>If found, maps the TaskEntity to a Task domain object</li>
+     *   <li>Returns an Optional containing the Task, or empty Optional if not found</li>
+     * </ol>
+     *
+     * <p><strong>Business Logic:</strong>
+     * This method enforces the business rule that no two incomplete tasks can have the same title.
+     * It is used by the service layer to validate title uniqueness before creating or updating tasks.
+     *
+     * <p><strong>Query Type:</strong>
+     * Uses an indexed query on the title column for efficient lookups.
+     * The query only returns incomplete tasks (completed = false).
+     *
+     * <p><strong>Return Value:</strong>
+     * <ul>
+     *   <li>If incomplete task found: Optional containing the Task domain object</li>
+     *   <li>If not found: Empty Optional</li>
+     *   <li>If task found but is completed: Empty Optional (not returned)</li>
+     * </ul>
+     *
+     * <p><strong>Handling the Result:</strong>
+     * <pre>
+     * Optional&lt;Task&gt; existingTask = repository.findByTitleAndNotCompleted(title);
+     * if (existingTask.isPresent()) {
+     *     // Title is already used by an incomplete task
+     *     throw new DuplicateTitleException("Title already exists");
+     * } else {
+     *     // Title is available, safe to create or use
+     *     Task newTask = new Task(title, description);
+     *     repository.save(newTask);
+     * }
+     * </pre>
+     *
+     * <p><strong>Performance:</strong>
+     * This query is efficient due to indexing on the title column.
+     * Time complexity is O(log n) with proper database indexing.
+     *
+     * <p><strong>Important Notes:</strong>
+     * <ul>
+     *   <li>Only matches incomplete tasks (completed = false)</li>
+     *   <li>Completed tasks with the same title do not cause a conflict</li>
+     *   <li>Title matching is case-sensitive</li>
+     *   <li>Mapping from TaskEntity to Task is automatic</li>
+     * </ul>
+     *
+     * @param title the title to search for. Must not be null or empty.
+     * @return an {@link Optional} containing the {@link Task} if an incomplete task with the title exists,
+     *         or empty Optional if no such task is found
+     * @throws IllegalArgumentException if title is null or empty
+     *
+     * @see Optional
+     * @see Task
+     */
+    @Override
+    public Optional<Task> findByTitleAndNotCompleted(String title) {
+        return jpaTaskRepository.findByTitleAndNotCompleted(title)
+                .map(taskEntityMapper::toTask);
+    }
+
 }

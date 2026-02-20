@@ -1,6 +1,7 @@
 package com.nsalazar.quicktask.task.application.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -56,6 +57,7 @@ import lombok.Data;
  * @see TaskDTOCreateRequest
  */
 @Data
+@Builder
 public class TaskDTOUpdateRequest {
 
     /**

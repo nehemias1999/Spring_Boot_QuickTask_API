@@ -39,7 +39,8 @@ import java.util.UUID;
  * <p><strong>JPA Annotations:</strong>
  * <ul>
  *   <li>{@code @Entity} - Marks this class as a JPA entity</li>
- *   <li>{@code @Table} - Specifies the database table name</li>
+ *   <li>{@code @Table} - Specifies the database table name and constraints</li>
+ *   <li>{@code @UniqueConstraint} - Enforces unique title. Validation for incomplete-only restriction is handled in service layer</li>
  *   <li>{@code @Id} - Marks the id field as the primary key</li>
  *   <li>{@code @GeneratedValue} - Specifies UUID auto-generation strategy</li>
  *   <li>{@code @Column} - Specifies database column properties (name, constraints, length)</li>
@@ -82,7 +83,15 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "tbl_tasks")
+@Table(
+    name = "tbl_tasks",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_title_incomplete_tasks",
+            columnNames = {"title"}
+        )
+    }
+)
 @AllArgsConstructor
 @NoArgsConstructor
 public class TaskEntity {
@@ -130,15 +139,26 @@ public class TaskEntity {
      *   <li>Column Name: {@code title}</li>
      *   <li>Nullable: No - must always have a value</li>
      *   <li>Length: Maximum 50 characters</li>
-     *   <li>Index: Can be indexed for efficient searching</li>
+     *   <li>Unique: Yes - no two tasks can have the same title</li>
+     *   <li>Index: Included in unique constraint for efficient lookup</li>
      * </ul>
      *
      * <p><strong>Validation & Constraints:</strong>
      * <ul>
      *   <li>NOT NULL constraint enforced at database level</li>
+     *   <li>UNIQUE constraint enforced at database level</li>
      *   <li>Length constraint enforced at database level (50 chars)</li>
      *   <li>Values longer than 50 characters will be truncated by the database</li>
-     *   <li>Service layer should validate before persistence to avoid data loss</li>
+     *   <li>Service layer validates that title is not duplicated for incomplete tasks</li>
+     *   <li>Service layer should validate before persistence to avoid data loss and constraint violations</li>
+     * </ul>
+     *
+     * <p><strong>Business Rule:</strong>
+     * <ul>
+     *   <li>Cannot have two incomplete (completed = false) tasks with the same title</li>
+     *   <li>Completed tasks can have duplicate titles (archived tasks don't count)</li>
+     *   <li>The service layer enforces this business rule via validation before persistence</li>
+     *   <li>Duplicate constraint violations trigger a business exception in the service layer</li>
      * </ul>
      *
      * <p><strong>Data Characteristics:</strong>
@@ -146,7 +166,7 @@ public class TaskEntity {
      *   <li>Required Field: Always populated for every task</li>
      *   <li>User-Provided: Set by clients during task creation</li>
      *   <li>Modifiable: Can be updated through the service layer</li>
-     *   <li>Searchable: Typically indexed for efficient queries</li>
+     *   <li>Searchable: Indexed for efficient queries</li>
      * </ul>
      *
      * <p><strong>Business Purpose:</strong>
@@ -155,7 +175,8 @@ public class TaskEntity {
      *
      * <p><strong>Mapping Note:</strong>
      * This field is mapped from the domain Task.title property during entity creation
-     * and mapping. The service layer is responsible for setting this before persistence.
+     * and mapping. The service layer is responsible for setting this before persistence
+     * and validating the uniqueness rule.
      */
     @Column(name = "title", nullable = false, length = 50)
     private String title;

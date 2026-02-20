@@ -1,5 +1,6 @@
 package com.nsalazar.quicktask.task.application.dto.response;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -62,6 +63,7 @@ import java.util.UUID;
  * @see com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest
  */
 @Data
+@Builder
 public class TaskDTOResponse {
 
     /**
