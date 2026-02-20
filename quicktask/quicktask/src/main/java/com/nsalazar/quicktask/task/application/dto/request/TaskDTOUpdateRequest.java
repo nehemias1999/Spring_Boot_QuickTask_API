@@ -1,8 +1,10 @@
 package com.nsalazar.quicktask.task.application.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Data Transfer Object (DTO) for updating an existing task.
@@ -58,6 +60,8 @@ import lombok.Data;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TaskDTOUpdateRequest {
 
     /**
