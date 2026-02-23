@@ -4,6 +4,7 @@ import com.nsalazar.quicktask.task.application.ITaskService;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOCreateRequest;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest;
 import com.nsalazar.quicktask.task.application.dto.response.TaskDTOResponse;
+import com.nsalazar.quicktask.task.application.dto.response.TaskDetailDTOResponse;
 import com.nsalazar.quicktask.task.application.exception.DuplicateTitleException;
 import com.nsalazar.quicktask.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +60,7 @@ class TaskControllerTest {
 
     private UUID testTaskId;
     private TaskDTOResponse testTaskResponse;
+    private TaskDetailDTOResponse testDetailResponse;
     private TaskDTOCreateRequest createRequest;
     private TaskDTOUpdateRequest updateRequest;
     private Pageable pageable;
@@ -76,6 +78,15 @@ class TaskControllerTest {
         pageable = PageRequest.of(0, 10);
 
         testTaskResponse = TaskDTOResponse.builder()
+                .id(testTaskId)
+                .title(TEST_TITLE)
+                .description(TEST_DESCRIPTION)
+                .completed(false)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(null)
+                .build();
+
+        testDetailResponse = TaskDetailDTOResponse.builder()
                 .id(testTaskId)
                 .title(TEST_TITLE)
                 .description(TEST_DESCRIPTION)
@@ -152,10 +163,10 @@ class TaskControllerTest {
     @DisplayName("Should retrieve task by ID and return 200 OK")
     void testGetTaskById() {
         // Arrange
-        when(taskService.getById(testTaskId)).thenReturn(testTaskResponse);
+        when(taskService.getById(testTaskId)).thenReturn(testDetailResponse);
 
         // Act
-        ResponseEntity<TaskDTOResponse> response = taskController.getById(testTaskId);
+        ResponseEntity<TaskDetailDTOResponse> response = taskController.getById(testTaskId);
 
         // Assert
         assertNotNull(response);
@@ -192,10 +203,10 @@ class TaskControllerTest {
     @DisplayName("Should create a new task and return 201 Created")
     void testCreateTask() {
         // Arrange
-        when(taskService.create(any(TaskDTOCreateRequest.class))).thenReturn(testTaskResponse);
+        when(taskService.create(any(TaskDTOCreateRequest.class))).thenReturn(testDetailResponse);
 
         // Act
-        ResponseEntity<TaskDTOResponse> response = taskController.create(createRequest);
+        ResponseEntity<TaskDetailDTOResponse> response = taskController.create(createRequest);
 
         // Assert
         assertNotNull(response);
@@ -233,7 +244,7 @@ class TaskControllerTest {
     @DisplayName("Should update an existing task and return 200 OK")
     void testUpdateTask() {
         // Arrange
-        TaskDTOResponse updatedResponse = TaskDTOResponse.builder()
+        TaskDetailDTOResponse updatedResponse = TaskDetailDTOResponse.builder()
                 .id(testTaskId)
                 .title("Updated Title")
                 .description("Updated Description")
@@ -246,7 +257,7 @@ class TaskControllerTest {
                 .thenReturn(updatedResponse);
 
         // Act
-        ResponseEntity<TaskDTOResponse> response = taskController.update(testTaskId, updateRequest);
+        ResponseEntity<TaskDetailDTOResponse> response = taskController.update(testTaskId, updateRequest);
 
         // Assert
         assertNotNull(response);
@@ -337,7 +348,7 @@ class TaskControllerTest {
     @DisplayName("Should pass correct DTO to service when creating task")
     void testCreateTaskPassesCorrectDTO() {
         // Arrange
-        when(taskService.create(any(TaskDTOCreateRequest.class))).thenReturn(testTaskResponse);
+        when(taskService.create(any(TaskDTOCreateRequest.class))).thenReturn(testDetailResponse);
 
         // Act
         taskController.create(createRequest);
@@ -357,7 +368,7 @@ class TaskControllerTest {
     @DisplayName("Should pass correct ID and DTO to service when updating task")
     void testUpdateTaskPassesCorrectParameters() {
         // Arrange
-        TaskDTOResponse updatedResponse = TaskDTOResponse.builder()
+        TaskDetailDTOResponse updatedResponse = TaskDetailDTOResponse.builder()
                 .id(testTaskId)
                 .title("Updated Title")
                 .description("Updated Description")
@@ -418,7 +429,7 @@ class TaskControllerTest {
                 .completed(true)
                 .build();
 
-        TaskDTOResponse completedResponse = TaskDTOResponse.builder()
+        TaskDetailDTOResponse completedResponse = TaskDetailDTOResponse.builder()
                 .id(testTaskId)
                 .title("Title")
                 .description("Description")
@@ -429,7 +440,7 @@ class TaskControllerTest {
                 .thenReturn(completedResponse);
 
         // Act
-        ResponseEntity<TaskDTOResponse> response = taskController.update(testTaskId, completedRequest);
+        ResponseEntity<TaskDetailDTOResponse> response = taskController.update(testTaskId, completedRequest);
 
         // Assert
         assertNotNull(response);

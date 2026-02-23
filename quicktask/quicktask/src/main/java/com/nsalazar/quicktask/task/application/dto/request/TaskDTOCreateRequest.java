@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Data Transfer Object (DTO) for creating a new task.
  *
@@ -99,5 +101,22 @@ public class TaskDTOCreateRequest {
      */
     @NotBlank(message = "Task description is required")
     private String description;
+
+    /**
+     * The unique identifier of the TaskList to assign this task to.
+     *
+     * <p><strong>Constraints:</strong>
+     * <ul>
+     *   <li>Optional - can be null if the task is not assigned to any TaskList</li>
+     *   <li>If provided, must correspond to an existing TaskList in the database</li>
+     * </ul>
+     *
+     * <p><strong>Examples:</strong>
+     * <ul>
+     *   <li>"f47ac10b-58cc-4372-a567-0e02b2c3d479" - assigns the task to an existing TaskList</li>
+     *   <li>null - task is not assigned to any TaskList</li>
+     * </ul>
+     */
+    private UUID taskListId;
 
 }

@@ -250,4 +250,11 @@ public class TaskDTOResponse {
      */
     private LocalDateTime updatedAt;
 
+    /**
+     * The unique identifier of the TaskList this task belongs to.
+     *
+     * <p>Can be null if the task is not assigned to any TaskList.
+     */
+    private UUID taskListId;
+
 }

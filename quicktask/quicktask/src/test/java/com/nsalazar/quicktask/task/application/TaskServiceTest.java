@@ -4,9 +4,11 @@ import com.nsalazar.quicktask.task.application.dto.mapper.ITaskDTOMapper;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOCreateRequest;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest;
 import com.nsalazar.quicktask.task.application.dto.response.TaskDTOResponse;
+import com.nsalazar.quicktask.task.application.dto.response.TaskDetailDTOResponse;
 import com.nsalazar.quicktask.task.application.exception.DuplicateTitleException;
 import com.nsalazar.quicktask.task.domain.Task;
 import com.nsalazar.quicktask.task.domain.repository.ITaskRepository;
+import com.nsalazar.quicktask.tasklist.domain.repository.ITaskListRepository;
 import com.nsalazar.quicktask.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -54,6 +56,9 @@ class TaskServiceTest {
 
     @Mock
     private ITaskRepository taskRepository;
+
+    @Mock
+    private ITaskListRepository taskListRepository;
 
     @Mock
     private ITaskDTOMapper taskDTOMapper;
@@ -158,15 +163,15 @@ class TaskServiceTest {
     void testGetTaskById() {
         // Arrange
         when(taskRepository.findById(testTaskId)).thenReturn(Optional.of(testTask));
-        when(taskDTOMapper.toTaskDTOResponse(testTask)).thenReturn(testTaskResponse);
 
         // Act
-        TaskDTOResponse result = taskService.getById(testTaskId);
+        TaskDetailDTOResponse result = taskService.getById(testTaskId);
 
         // Assert
         assertNotNull(result);
         assertEquals(TEST_TITLE, result.getTitle());
         assertEquals(testTaskId, result.getId());
+        assertNull(result.getTaskList());
         verify(taskRepository, times(1)).findById(testTaskId);
     }
 
@@ -197,10 +202,9 @@ class TaskServiceTest {
         when(taskRepository.findByTitleAndNotCompleted(TEST_TITLE)).thenReturn(Optional.empty());
         when(taskDTOMapper.toTask(createRequest)).thenReturn(testTask);
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
-        when(taskDTOMapper.toTaskDTOResponse(testTask)).thenReturn(testTaskResponse);
 
         // Act
-        TaskDTOResponse result = taskService.create(createRequest);
+        TaskDetailDTOResponse result = taskService.create(createRequest);
 
         // Assert
         assertNotNull(result);
@@ -257,23 +261,13 @@ class TaskServiceTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        TaskDTOResponse updatedResponse = TaskDTOResponse.builder()
-                .id(testTaskId)
-                .title("Updated Title")
-                .description("Updated Description")
-                .completed(false)
-                .createdAt(testTask.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
         when(taskRepository.findById(testTaskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.findByTitleAndNotCompleted("Updated Title")).thenReturn(Optional.empty());
         doNothing().when(taskDTOMapper).toTask(updateRequest, testTask);
         when(taskRepository.save(any(Task.class))).thenReturn(updatedTask);
-        when(taskDTOMapper.toTaskDTOResponse(updatedTask)).thenReturn(updatedResponse);
 
         // Act
-        TaskDTOResponse result = taskService.update(testTaskId, updateRequest);
+        TaskDetailDTOResponse result = taskService.update(testTaskId, updateRequest);
 
         // Assert
         assertNotNull(result);
@@ -351,20 +345,12 @@ class TaskServiceTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        TaskDTOResponse updatedResponse = TaskDTOResponse.builder()
-                .id(testTaskId)
-                .title(TEST_TITLE)
-                .description("New Description")
-                .completed(false)
-                .build();
-
         when(taskRepository.findById(testTaskId)).thenReturn(Optional.of(testTask));
         doNothing().when(taskDTOMapper).toTask(sameTitle, testTask);
         when(taskRepository.save(any(Task.class))).thenReturn(updatedTask);
-        when(taskDTOMapper.toTaskDTOResponse(updatedTask)).thenReturn(updatedResponse);
 
         // Act
-        TaskDTOResponse result = taskService.update(testTaskId, sameTitle);
+        TaskDetailDTOResponse result = taskService.update(testTaskId, sameTitle);
 
         // Assert
         assertNotNull(result);
@@ -406,6 +392,22 @@ class TaskServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> taskService.update(testTaskId, invalidRequest),
                 "Should throw IllegalArgumentException when title is empty");
+    }
+
+    /**
+     * Tests updating a task with an empty DTO (no fields provided).
+     * Verifies that IllegalArgumentException is thrown.
+     */
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when update request has no fields")
+    void testUpdateTaskWithEmptyDTO() {
+        // Arrange
+        TaskDTOUpdateRequest emptyRequest = TaskDTOUpdateRequest.builder().build();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class,
+                () -> taskService.update(testTaskId, emptyRequest),
+                "Should throw IllegalArgumentException when no fields are provided");
     }
 
     /**

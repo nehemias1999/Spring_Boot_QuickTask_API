@@ -110,6 +110,7 @@ public interface ITaskDTOMapper {
      * @see TaskDTOUpdateRequest
      * @see Task
      */
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mappings({
             @Mapping(target = "id", ignore = true),
             @Mapping(target = "createdAt", ignore = true),

@@ -1,10 +1,11 @@
 package com.nsalazar.quicktask.task.application.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 /**
  * Data Transfer Object (DTO) for updating an existing task.
@@ -15,10 +16,12 @@ import lombok.NoArgsConstructor;
  *
  * <p><strong>Validation:</strong>
  * <ul>
- *   <li>Both {@code title} and {@code description} are required and must not be blank</li>
- *   <li>Blank means null, empty string, or string containing only whitespace characters</li>
- *   <li>The {@code completed} status is optional and defaults to false if not provided</li>
- *   <li>Validation is performed by the Bean Validation framework before the request reaches the service layer</li>
+ *   <li>At least one field must be provided (the DTO cannot be completely empty)</li>
+ *   <li>All fields are optional — only provided fields will be updated</li>
+ *   <li>If {@code title} is provided, it must not be blank</li>
+ *   <li>If {@code description} is provided, it must not be blank</li>
+ *   <li>The {@code completed} status is optional</li>
+ *   <li>The {@code taskListId} is optional</li>
  * </ul>
  *
  * <p><strong>Usage Context:</strong>
@@ -87,7 +90,6 @@ public class TaskDTOUpdateRequest {
      * <p><strong>Behavior on Update:</strong> If provided, replaces the existing title completely.
      * The new value must pass validation before being applied to the task.
      */
-    @NotBlank(message = "Task title is required")
     private String title;
 
     /**
@@ -113,7 +115,6 @@ public class TaskDTOUpdateRequest {
      * <p><strong>Behavior on Update:</strong> If provided, replaces the existing description completely.
      * The new value must pass validation before being applied to the task.
      */
-    @NotBlank(message = "Task description is required")
     private String description;
 
     /**
@@ -133,13 +134,30 @@ public class TaskDTOUpdateRequest {
      *   <li>Set to {@code false} to reopen or unmark a completed task</li>
      * </ul>
      *
-     * <p><strong>Default Behavior:</strong> If not explicitly provided in the request, this field
-     * defaults to {@code false} (task is not completed).
+     * <p><strong>Default Behavior:</strong> If not provided in the request, this field
+     * is null and the current value is preserved.
      *
      * <p><strong>Behavior on Update:</strong> If provided, replaces the existing completed status.
-     * This is the only field in this DTO that is not strictly required to be non-blank and can
-     * be modified independently of the title and description.
+     * If null (not provided), the current completion status is preserved.
      */
-    private boolean completed;
+    private Boolean completed;
+
+    /**
+     * The unique identifier of the TaskList to assign this task to.
+     *
+     * <p><strong>Constraints:</strong>
+     * <ul>
+     *   <li>Optional - can be null to keep the current TaskList assignment unchanged</li>
+     *   <li>If provided, must correspond to an existing TaskList in the database</li>
+     *   <li>Can be used to assign a task to a TaskList, change TaskList, or remove from TaskList</li>
+     * </ul>
+     *
+     * <p><strong>Behavior on Update:</strong>
+     * <ul>
+     *   <li>If provided with a valid UUID, the task is assigned to that TaskList</li>
+     *   <li>If null, the task's TaskList assignment remains unchanged</li>
+     * </ul>
+     */
+    private UUID taskListId;
 
 }

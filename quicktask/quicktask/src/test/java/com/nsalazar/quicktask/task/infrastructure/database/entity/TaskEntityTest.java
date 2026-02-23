@@ -23,7 +23,7 @@ class TaskEntityTest {
         LocalDateTime createdAt = LocalDateTime.now();
         LocalDateTime updatedAt = LocalDateTime.now().plusHours(1);
 
-        TaskEntity task = new TaskEntity(id, title, description, completed, createdAt, updatedAt);
+        TaskEntity task = new TaskEntity(id, title, description, completed, createdAt, updatedAt, null);
 
         assertEquals(id, task.getId());
         assertEquals(title, task.getTitle());

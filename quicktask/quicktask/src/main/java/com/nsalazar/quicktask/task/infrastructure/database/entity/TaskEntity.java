@@ -1,5 +1,6 @@
 package com.nsalazar.quicktask.task.infrastructure.database.entity;
 
+import com.nsalazar.quicktask.tasklist.infrastructure.database.entity.TaskListEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -397,5 +398,9 @@ public class TaskEntity {
      */
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_list_id")
+    private TaskListEntity taskList;
 
 }

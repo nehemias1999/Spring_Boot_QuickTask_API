@@ -5,9 +5,11 @@ import com.nsalazar.quicktask.task.application.ITaskService;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOCreateRequest;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest;
 import com.nsalazar.quicktask.task.application.dto.response.TaskDTOResponse;
+import com.nsalazar.quicktask.task.application.dto.response.TaskDetailDTOResponse;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -49,6 +51,7 @@ import java.util.UUID;
  * @see TaskDTOCreateRequest
  * @see TaskDTOUpdateRequest
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/tasks")
 @RequiredArgsConstructor
@@ -97,7 +100,12 @@ public class TaskController {
                     @SortDefault(sort = "id", direction = Sort.Direction.ASC)
             })
             Pageable pageable) {
-        return ResponseEntity.ok(taskService.getAll(pageable));
+        log.info("GET /api/v1/tasks - Retrieving all tasks | page={}, size={}, sort={}",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<TaskDTOResponse> result = taskService.getAll(pageable);
+        log.info("GET /api/v1/tasks - Successfully retrieved {} tasks (page {} of {})",
+                result.getNumberOfElements(), result.getNumber() + 1, result.getTotalPages());
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -126,8 +134,11 @@ public class TaskController {
      * @see UUID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<TaskDTOResponse> getById(@PathVariable @NonNull UUID id) {
-        return ResponseEntity.ok(taskService.getById(id));
+    public ResponseEntity<TaskDetailDTOResponse> getById(@PathVariable @NonNull UUID id) {
+        log.info("GET /api/v1/tasks/{} - Retrieving task by ID", id);
+        TaskDetailDTOResponse result = taskService.getById(id);
+        log.info("GET /api/v1/tasks/{} - Successfully retrieved task: '{}'", id, result.getTitle());
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -168,10 +179,13 @@ public class TaskController {
      * @see TaskDTOResponse
      */
     @PostMapping
-    public ResponseEntity<TaskDTOResponse> create(@Valid @RequestBody TaskDTOCreateRequest createTaskDTO) {
+    public ResponseEntity<TaskDetailDTOResponse> create(@Valid @RequestBody TaskDTOCreateRequest createTaskDTO) {
+        log.info("POST /api/v1/tasks - Creating new task with title: '{}'", createTaskDTO.getTitle());
+        TaskDetailDTOResponse result = taskService.create(createTaskDTO);
+        log.info("POST /api/v1/tasks - Task created successfully with ID: {}", result.getId());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(taskService.create(createTaskDTO));
+                .body(result);
     }
 
     /**
@@ -222,10 +236,13 @@ public class TaskController {
      * @see TaskDTOResponse
      */
     @PutMapping("/{id}")
-    public ResponseEntity<TaskDTOResponse> update(
+    public ResponseEntity<TaskDetailDTOResponse> update(
             @PathVariable @NonNull UUID id,
             @Valid @RequestBody TaskDTOUpdateRequest updateTaskDTO) {
-        return ResponseEntity.ok(taskService.update(id, updateTaskDTO));
+        log.info("PUT /api/v1/tasks/{} - Updating task with title: '{}'", id, updateTaskDTO.getTitle());
+        TaskDetailDTOResponse result = taskService.update(id, updateTaskDTO);
+        log.info("PUT /api/v1/tasks/{} - Task updated successfully", id);
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -254,7 +271,9 @@ public class TaskController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable @NonNull UUID id) {
+        log.info("DELETE /api/v1/tasks/{} - Deleting task", id);
         taskService.delete(id);
+        log.info("DELETE /api/v1/tasks/{} - Task deleted successfully", id);
         return ResponseEntity.noContent().build();
     }
 

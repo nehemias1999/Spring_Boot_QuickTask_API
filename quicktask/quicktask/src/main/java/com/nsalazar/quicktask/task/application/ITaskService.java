@@ -3,6 +3,7 @@ package com.nsalazar.quicktask.task.application;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOCreateRequest;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest;
 import com.nsalazar.quicktask.task.application.dto.response.TaskDTOResponse;
+import com.nsalazar.quicktask.task.application.dto.response.TaskDetailDTOResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -128,7 +129,7 @@ public interface ITaskService {
      * @see TaskDTOResponse
      * @see UUID
      */
-    TaskDTOResponse getById(UUID id);
+    TaskDetailDTOResponse getById(UUID id);
 
     /**
      * Creates a new task.
@@ -172,7 +173,7 @@ public interface ITaskService {
      * @see TaskDTOCreateRequest
      * @see TaskDTOResponse
      */
-    TaskDTOResponse create(TaskDTOCreateRequest createTaskDTO);
+    TaskDetailDTOResponse create(TaskDTOCreateRequest createTaskDTO);
 
     /**
      * Updates an existing task.
@@ -233,7 +234,7 @@ public interface ITaskService {
      * @see TaskDTOResponse
      * @see UUID
      */
-    TaskDTOResponse update(UUID id, TaskDTOUpdateRequest updateTaskDTO);
+    TaskDetailDTOResponse update(UUID id, TaskDTOUpdateRequest updateTaskDTO);
 
     /**
      * Deletes a task by its unique identifier.

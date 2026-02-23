@@ -4,11 +4,15 @@ import com.nsalazar.quicktask.task.application.dto.mapper.ITaskDTOMapper;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOCreateRequest;
 import com.nsalazar.quicktask.task.application.dto.request.TaskDTOUpdateRequest;
 import com.nsalazar.quicktask.task.application.dto.response.TaskDTOResponse;
+import com.nsalazar.quicktask.task.application.dto.response.TaskDetailDTOResponse;
 import com.nsalazar.quicktask.task.application.exception.DuplicateTitleException;
 import com.nsalazar.quicktask.task.domain.Task;
 import com.nsalazar.quicktask.task.domain.repository.ITaskRepository;
+import com.nsalazar.quicktask.tasklist.domain.TaskList;
+import com.nsalazar.quicktask.tasklist.domain.repository.ITaskListRepository;
 import com.nsalazar.quicktask.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -43,6 +47,7 @@ import java.util.UUID;
  * @see Task
  * @see TaskDTOResponse
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -53,6 +58,11 @@ public class TaskService implements ITaskService {
      * Used for all database operations related to tasks.
      */
     private final ITaskRepository taskRepository;
+
+    /**
+     * Repository for verifying TaskList existence when assigning tasks to task lists.
+     */
+    private final ITaskListRepository taskListRepository;
 
     /**
      * Mapper for converting between domain Task objects and Data Transfer Objects (DTOs).
@@ -81,11 +91,15 @@ public class TaskService implements ITaskService {
     @Override
     @Transactional(readOnly = true)
     public Page<TaskDTOResponse> getAll(Pageable pageable) {
+        log.debug("Fetching all tasks with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         Page<Task> tasksPage = taskRepository.findAll(pageable);
 
-        if(tasksPage.isEmpty())
+        if(tasksPage.isEmpty()) {
+            log.warn("No tasks found in the database");
             throw new ResourceNotFoundException("Task list is empty");
+        }
 
+        log.debug("Found {} tasks (total: {})", tasksPage.getNumberOfElements(), tasksPage.getTotalElements());
         return tasksPage
                 .map(taskDTOMapper::toTaskDTOResponse);
     }
@@ -107,10 +121,15 @@ public class TaskService implements ITaskService {
      */
     @Override
     @Transactional(readOnly = true)
-    public TaskDTOResponse getById(UUID id) {
+    public TaskDetailDTOResponse getById(UUID id) {
+        log.debug("Fetching task with ID: {}", id);
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
-        return taskDTOMapper.toTaskDTOResponse(task);
+                .orElseThrow(() -> {
+                    log.warn("Task not found with ID: {}", id);
+                    return new ResourceNotFoundException("Task not found with id: " + id);
+                });
+        log.debug("Task found: '{}' (ID: {})", task.getTitle(), id);
+        return buildTaskDetailDTOResponse(task);
     }
 
     /**
@@ -138,16 +157,19 @@ public class TaskService implements ITaskService {
      * @see DuplicateTitleException
      */
     @Override
-    public TaskDTOResponse create(TaskDTOCreateRequest createTaskDTO) {
+    public TaskDetailDTOResponse create(TaskDTOCreateRequest createTaskDTO) {
+        log.debug("Creating new task with title: '{}'", createTaskDTO != null ? createTaskDTO.getTitle() : "null");
         validateTaskDTOCreateRequest(createTaskDTO);
         validateTitleNotDuplicated(createTaskDTO.getTitle());
+        validateTaskListExists(createTaskDTO.getTaskListId());
 
         Task task = taskDTOMapper.toTask(createTaskDTO);
         task.setCompleted(false);
         task.setCreatedAt(LocalDateTime.now());
 
         Task savedTask = taskRepository.save(task);
-        return taskDTOMapper.toTaskDTOResponse(savedTask);
+        log.info("Task created successfully: '{}' (ID: {})", savedTask.getTitle(), savedTask.getId());
+        return buildTaskDetailDTOResponse(savedTask);
     }
 
     /**
@@ -179,22 +201,33 @@ public class TaskService implements ITaskService {
      * @see DuplicateTitleException
      */
     @Override
-    public TaskDTOResponse update(UUID id, TaskDTOUpdateRequest updateTaskDTO) {
+    public TaskDetailDTOResponse update(UUID id, TaskDTOUpdateRequest updateTaskDTO) {
+        log.debug("Updating task with ID: {}", id);
         validateTaskDTOUpdateRequest(updateTaskDTO);
 
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Task not found for update with ID: {}", id);
+                    return new ResourceNotFoundException("Task not found with id: " + id);
+                });
 
         // Only validate title uniqueness if the title is being changed
-        if (!task.getTitle().equals(updateTaskDTO.getTitle())) {
+        if (updateTaskDTO.getTitle() != null && !task.getTitle().equals(updateTaskDTO.getTitle())) {
+            log.debug("Title changed from '{}' to '{}', validating uniqueness", task.getTitle(), updateTaskDTO.getTitle());
             validateTitleNotDuplicated(updateTaskDTO.getTitle());
+        }
+
+        // Only validate TaskList existence if taskListId is provided
+        if (updateTaskDTO.getTaskListId() != null) {
+            validateTaskListExists(updateTaskDTO.getTaskListId());
         }
 
         taskDTOMapper.toTask(updateTaskDTO, task);
         task.setUpdatedAt(LocalDateTime.now());
 
         Task updatedTask = taskRepository.save(task);
-        return taskDTOMapper.toTaskDTOResponse(updatedTask);
+        log.info("Task updated successfully: '{}' (ID: {})", updatedTask.getTitle(), updatedTask.getId());
+        return buildTaskDetailDTOResponse(updatedTask);
     }
 
     /**
@@ -212,10 +245,14 @@ public class TaskService implements ITaskService {
      */
     @Override
     public void delete(UUID id) {
-        if(!taskRepository.existsById(id))
+        log.debug("Deleting task with ID: {}", id);
+        if(!taskRepository.existsById(id)) {
+            log.warn("Task not found for deletion with ID: {}", id);
             throw new ResourceNotFoundException("Task not found with Id: " + id);
+        }
 
         taskRepository.delete(id);
+        log.info("Task deleted successfully (ID: {})", id);
     }
 
     /**
@@ -243,29 +280,32 @@ public class TaskService implements ITaskService {
     /**
      * Validates the update task DTO.
      *
-     * <p>This method performs validation on the task update request to ensure it contains
-     * valid data. The following validations are performed:
-     * <ul>
-     *   <li>Verifies that the DTO is not null</li>
-     *   <li>Ensures the title is not null and not empty (after trimming whitespace)</li>
-     *   <li>Ensures the description is not null and not empty (after trimming whitespace)</li>
-     * </ul>
-     *
-     * <p>The completed status is optional and can be set to either true or false.
+     * <p>This method performs validation on the task update request to ensure it is not null
+     * and contains at least one field to update. Individual fields are validated only if provided.
      *
      * @param updateTaskDTO the update DTO to validate
-     * @throws IllegalArgumentException if the DTO is null, title is missing/empty, or description is missing/empty
+     * @throws IllegalArgumentException if the DTO is null, completely empty, or contains invalid field values
      * @see TaskDTOUpdateRequest
      */
     private void validateTaskDTOUpdateRequest(TaskDTOUpdateRequest updateTaskDTO) {
         if (updateTaskDTO == null) {
             throw new IllegalArgumentException("Task update request cannot be null");
         }
-        if (updateTaskDTO.getTitle() == null || updateTaskDTO.getTitle().trim().isEmpty()) {
-            throw new IllegalArgumentException("Task title is required");
+
+        boolean hasTitle = updateTaskDTO.getTitle() != null;
+        boolean hasDescription = updateTaskDTO.getDescription() != null;
+        boolean hasCompleted = updateTaskDTO.getCompleted() != null;
+        boolean hasTaskListId = updateTaskDTO.getTaskListId() != null;
+
+        if (!hasTitle && !hasDescription && !hasCompleted && !hasTaskListId) {
+            throw new IllegalArgumentException("Task update request must contain at least one field to update");
         }
-        if (updateTaskDTO.getDescription() == null || updateTaskDTO.getDescription().trim().isEmpty()) {
-            throw new IllegalArgumentException("Task description is required");
+
+        if (hasTitle && updateTaskDTO.getTitle().trim().isEmpty()) {
+            throw new IllegalArgumentException("Task title cannot be blank");
+        }
+        if (hasDescription && updateTaskDTO.getDescription().trim().isEmpty()) {
+            throw new IllegalArgumentException("Task description cannot be blank");
         }
     }
 
@@ -307,10 +347,62 @@ public class TaskService implements ITaskService {
      */
     private void validateTitleNotDuplicated(String title) {
         if (taskRepository.findByTitleAndNotCompleted(title).isPresent()) {
+            log.warn("Duplicate title detected: '{}'", title);
             throw new DuplicateTitleException(
                     String.format("A task with title '%s' already exists and is incomplete", title)
             );
         }
+    }
+
+    /**
+     * Validates that the TaskList with the given ID exists in the database.
+     *
+     * <p>If the taskListId is null, validation is skipped since assigning a TaskList is optional.
+     * If the taskListId is provided but does not correspond to an existing TaskList,
+     * a {@link ResourceNotFoundException} is thrown.
+     *
+     * @param taskListId the UUID of the TaskList to validate. Can be null.
+     * @throws ResourceNotFoundException if the taskListId is not null and no TaskList exists with that ID
+     */
+    private void validateTaskListExists(UUID taskListId) {
+        if (taskListId != null && !taskListRepository.existsById(taskListId)) {
+            log.warn("TaskList not found with ID: {}", taskListId);
+            throw new ResourceNotFoundException("TaskList not found with id: " + taskListId);
+        }
+    }
+
+    /**
+     * Builds a {@link TaskDetailDTOResponse} from a domain {@link Task} object.
+     *
+     * <p>This method constructs a detailed response DTO that includes the task's data
+     * along with the associated {@link TaskList} information (if any). If the task has a
+     * {@code taskListId}, it fetches the TaskList from the repository and embeds its
+     * id, name and description as a {@link TaskDetailDTOResponse.TaskListInfo} object.
+     *
+     * @param task the domain Task object to convert. Must not be null.
+     * @return a {@link TaskDetailDTOResponse} with complete task data and optional TaskList info
+     */
+    private TaskDetailDTOResponse buildTaskDetailDTOResponse(Task task) {
+        TaskDetailDTOResponse.TaskDetailDTOResponseBuilder builder = TaskDetailDTOResponse.builder()
+                .id(task.getId())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .completed(task.isCompleted())
+                .createdAt(task.getCreatedAt())
+                .updatedAt(task.getUpdatedAt());
+
+        if (task.getTaskListId() != null) {
+            taskListRepository.findById(task.getTaskListId())
+                    .ifPresent(taskList -> builder.taskList(
+                            TaskDetailDTOResponse.TaskListInfo.builder()
+                                    .id(taskList.getId())
+                                    .name(taskList.getName())
+                                    .description(taskList.getDescription())
+                                    .build()
+                    ));
+        }
+
+        return builder.build();
     }
 
 }

@@ -2,7 +2,10 @@ package com.nsalazar.quicktask.task.infrastructure.database.mapper;
 
 import com.nsalazar.quicktask.task.domain.Task;
 import com.nsalazar.quicktask.task.infrastructure.database.entity.TaskEntity;
+import com.nsalazar.quicktask.tasklist.infrastructure.database.entity.TaskListEntity;
 import org.mapstruct.*;
+
+import java.util.UUID;
 
 /**
  * Mapper interface for converting between Task domain objects and TaskEntity persistence objects.
@@ -119,37 +122,8 @@ public interface ITaskEntityMapper {
      *   <li>{@code completed} (boolean) → {@code completed} (boolean)</li>
      *   <li>{@code createdAt} (LocalDateTime) → {@code createdAt} (LocalDateTime)</li>
      *   <li>{@code updatedAt} (LocalDateTime) → {@code updatedAt} (LocalDateTime)</li>
+     *   <li>{@code taskList.id} (UUID) → {@code taskListId} (UUID)</li>
      * </ul>
-     *
-     * <p><strong>Data Integrity:</strong>
-     * <ul>
-     *   <li>All data from the entity is copied to the domain object</li>
-     *   <li>No data transformation or filtering occurs</li>
-     *   <li>null values are preserved (e.g., updatedAt can be null)</li>
-     *   <li>Collections and complex types are handled (if any)</li>
-     * </ul>
-     *
-     * <p><strong>Performance Characteristics:</strong>
-     * <ul>
-     *   <li>O(1) operation - constant time regardless of data size</li>
-     *   <li>No database queries or I/O operations</li>
-     *   <li>Direct field assignment, no reflection</li>
-     *   <li>Thread-safe (no shared mutable state)</li>
-     * </ul>
-     *
-     * <p><strong>Null Handling:</strong>
-     * <ul>
-     *   <li>If taskEntity parameter is null, the method will throw a NullPointerException</li>
-     *   <li>Individual null field values (like updatedAt) are preserved in the result</li>
-     *   <li>The returned Task object is never null if conversion succeeds</li>
-     * </ul>
-     *
-     * <p><strong>Example Usage:</strong>
-     * <pre>
-     * // In TaskRepository.findById():
-     * Optional&lt;TaskEntity&gt; entityOpt = jpaRepository.findById(id);
-     * Optional&lt;Task&gt; taskOpt = entityOpt.map(mapper::toTask);
-     * </pre>
      *
      * @param taskEntity the persistence {@link TaskEntity} object retrieved from the database.
      *                   Must not be null.
@@ -160,7 +134,16 @@ public interface ITaskEntityMapper {
      * @see TaskEntity
      * @see Task
      */
+    @Mapping(target = "taskListId", ignore = true)
+    @BeanMapping(ignoreUnmappedSourceProperties = {"taskList"})
     Task toTask(TaskEntity taskEntity);
+
+    @AfterMapping
+    default void mapTaskListToTaskListId(TaskEntity source, @MappingTarget Task target) {
+        if (source.getTaskList() != null) {
+            target.setTaskListId(source.getTaskList().getId());
+        }
+    }
 
     /**
      * Converts a domain Task object to a persistence TaskEntity object.
@@ -186,62 +169,8 @@ public interface ITaskEntityMapper {
      *   <li>{@code completed} (boolean) → {@code completed} (boolean)</li>
      *   <li>{@code createdAt} (LocalDateTime) → {@code createdAt} (LocalDateTime)</li>
      *   <li>{@code updatedAt} (LocalDateTime) → {@code updatedAt} (LocalDateTime)</li>
+     *   <li>{@code taskListId} (UUID) → {@code taskList} (TaskListEntity) - handled via @AfterMapping</li>
      * </ul>
-     *
-     * <p><strong>Database Constraints:</strong>
-     * The returned TaskEntity will have all fields set. JPA/database constraints are enforced:
-     * <ul>
-     *   <li>id: Can be null for new inserts (database will generate UUID)</li>
-     *   <li>title: Must not be null (NOT NULL constraint at database level)</li>
-     *   <li>description: Must not be null (NOT NULL constraint at database level)</li>
-     *   <li>completed: Must not be null (NOT NULL with DEFAULT FALSE)</li>
-     *   <li>createdAt: Must not be null (NOT NULL constraint at database level)</li>
-     *   <li>updatedAt: Can be null (nullable column)</li>
-     * </ul>
-     *
-     * <p><strong>ID Generation for New Tasks:</strong>
-     * <ul>
-     *   <li>For new tasks, the Task.id may be null</li>
-     *   <li>The TaskEntity.id will also be null</li>
-     *   <li>The database will generate a UUID during INSERT via @GeneratedValue(GenerationType.UUID)</li>
-     *   <li>The generated UUID can be retrieved after the INSERT completes</li>
-     * </ul>
-     *
-     * <p><strong>Performance Characteristics:</strong>
-     * <ul>
-     *   <li>O(1) operation - constant time regardless of data size</li>
-     *   <li>No database queries or I/O operations</li>
-     *   <li>Direct field assignment, no reflection</li>
-     *   <li>Thread-safe (no shared mutable state)</li>
-     * </ul>
-     *
-     * <p><strong>Data Integrity:</strong>
-     * <ul>
-     *   <li>All data from the domain object is copied to the entity</li>
-     *   <li>No data transformation or filtering occurs</li>
-     *   <li>null values are preserved (e.g., updatedAt can be null for new tasks)</li>
-     *   <li>The returned entity is ready for persistence operations</li>
-     * </ul>
-     *
-     * <p><strong>Null Handling:</strong>
-     * <ul>
-     *   <li>If task parameter is null, the method will throw a NullPointerException</li>
-     *   <li>Individual null field values (like updatedAt) are preserved in the result</li>
-     *   <li>The returned TaskEntity object is never null if conversion succeeds</li>
-     * </ul>
-     *
-     * <p><strong>Transactional Context:</strong>
-     * This conversion happens within the transaction context of the repository operation.
-     * The entity returned by this method should be used within the same transaction.
-     *
-     * <p><strong>Example Usage:</strong>
-     * <pre>
-     * // In TaskRepository.save():
-     * Task task = taskDomainObject;
-     * TaskEntity entity = mapper.toTaskEntity(task);
-     * TaskEntity saved = jpaRepository.save(entity);
-     * Task result = mapper.toTask(saved);
-     * </pre>
      *
      * @param task the domain {@link Task} object to convert.
      *             Must not be null.
@@ -253,7 +182,19 @@ public interface ITaskEntityMapper {
      * @see Task
      * @see TaskEntity
      */
+    @Mapping(target = "taskList", ignore = true)
+    @BeanMapping(ignoreUnmappedSourceProperties = {"taskListId"})
     TaskEntity toTaskEntity(Task task);
+
+    @AfterMapping
+    default void mapTaskListIdToTaskList(Task source, @MappingTarget TaskEntity target) {
+        UUID taskListId = source.getTaskListId();
+        if (taskListId != null) {
+            TaskListEntity taskListEntity = new TaskListEntity();
+            taskListEntity.setId(taskListId);
+            target.setTaskList(taskListEntity);
+        }
+    }
 
 }
 

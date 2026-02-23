@@ -341,4 +341,6 @@ public class Task {
      */
     private LocalDateTime updatedAt;
 
+    private UUID taskListId;
+
 }
