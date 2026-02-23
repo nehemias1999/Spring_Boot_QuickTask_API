@@ -19,8 +19,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TaskListDTOUpdateRequest {
 
+    /**
+     * The updated name of the task list.
+     *
+     * <p>Optional. If provided, must not be blank. Must be unique across all task lists.
+     * Maximum length: 50 characters (enforced at database level).
+     */
     private String name;
 
+    /**
+     * The updated description of the task list.
+     *
+     * <p>Optional. If provided, must not be blank.
+     * Maximum length: 200 characters (enforced at database level).
+     */
     private String description;
 
 }

@@ -27,21 +27,45 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TaskListRepository implements ITaskListRepository {
 
+    /**
+     * Spring Data JPA repository for direct database operations on TaskListEntity.
+     */
     private final IJPATaskListRepository jpaTaskListRepository;
+
+    /**
+     * Mapper for converting between domain TaskList objects and TaskListEntity persistence objects.
+     */
     private final ITaskListEntityMapper taskListEntityMapper;
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Fetches a paginated list of TaskListEntity objects from the database
+     * and maps each one to a domain TaskList object.
+     */
     @Override
     public Page<TaskList> findAll(Pageable pageable) {
         return jpaTaskListRepository.findAll(pageable)
                 .map(taskListEntityMapper::toTaskList);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Performs a primary key lookup and maps the result to a domain TaskList object.
+     */
     @Override
     public Optional<TaskList> findById(UUID id) {
         return jpaTaskListRepository.findById(id)
                 .map(taskListEntityMapper::toTaskList);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Converts the domain TaskList to a TaskListEntity, persists it, and converts
+     * the saved entity back to a domain object with the generated ID.
+     */
     @Override
     public TaskList save(TaskList taskList) {
         TaskListEntity entity = taskListEntityMapper.toTaskListEntity(taskList);
@@ -49,16 +73,32 @@ public class TaskListRepository implements ITaskListRepository {
         return taskListEntityMapper.toTaskList(savedEntity);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Delegates to Spring Data JPA's {@code deleteById} method.
+     */
     @Override
     public void delete(UUID id) {
         jpaTaskListRepository.deleteById(id);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Delegates to Spring Data JPA's {@code existsById} method.
+     */
     @Override
     public boolean existsById(UUID id) {
         return jpaTaskListRepository.existsById(id);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Delegates to the JPA repository's custom query method and maps the result
+     * to a domain TaskList object.
+     */
     @Override
     public Optional<TaskList> findByName(String name) {
         return jpaTaskListRepository.findByName(name)

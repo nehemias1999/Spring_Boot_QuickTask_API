@@ -19,9 +19,32 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TaskListDTOCreateRequest {
 
+    /**
+     * The name of the task list.
+     *
+     * <p><strong>Constraints:</strong>
+     * <ul>
+     *   <li>Required - must not be null or blank</li>
+     *   <li>Maximum length: 50 characters (enforced at database level)</li>
+     *   <li>Must be unique across all task lists</li>
+     * </ul>
+     *
+     * <p><strong>Validation Error Message:</strong> "Task list name is required"
+     */
     @NotBlank(message = "Task list name is required")
     private String name;
 
+    /**
+     * The description of the task list.
+     *
+     * <p><strong>Constraints:</strong>
+     * <ul>
+     *   <li>Required - must not be null or blank</li>
+     *   <li>Maximum length: 200 characters (enforced at database level)</li>
+     * </ul>
+     *
+     * <p><strong>Validation Error Message:</strong> "Task list description is required"
+     */
     @NotBlank(message = "Task list description is required")
     private String description;
 
