@@ -94,7 +94,6 @@ Each bounded context (`task`, `tasklist`) has its own set of layers, promoting m
 | Lombok             | —       | Boilerplate code reduction                   |
 | Maven              | —       | Build and dependency management              |
 | JUnit 5            | —       | Unit and integration testing                 |
-| H2 Console         | —       | In-memory database console for development   |
 
 ---
 
